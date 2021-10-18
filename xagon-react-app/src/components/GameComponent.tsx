@@ -6,10 +6,10 @@ import {
   Scene,
   SceneLoader,
   TransformNode,
-  SkeletonViewer,
-  BoneAxesViewer,
+  // SkeletonViewer,
+  // BoneAxesViewer,
+  // Color3,
   BoneLookController,
-  Color3,
 } from '@babylonjs/core';
 
 import SceneComponent from 'components/SceneComponent';
@@ -69,99 +69,96 @@ const onSceneReady = (sceneArg: Scene) => {
       const triangleRadius = 1;
       const triangleSide = triangleRadius * (3 / Math.sqrt(3));
       const triangleEdgeLength = icosahedron.findShortestEdgeLength();
-      const scalingRatio = (1 / triangleSide) * triangleEdgeLength * 0.9;
+      const scalingRatio = (1 / triangleSide) * triangleEdgeLength;
 
-      triangles
-        // .slice(0, 3)
-        .map((tr, i) => {
-          triangleMesh.scaling = new Vector3(
-            scalingRatio,
-            scalingRatio,
-            scalingRatio,
+      triangles.slice(0, 4).forEach((tr, i) => {
+        triangleMesh.scaling = new Vector3(
+          scalingRatio,
+          scalingRatio,
+          scalingRatio,
+        );
+        const meshClone = triangleMesh?.clone(`Triangle${i}`, triangleMesh);
+        if (meshClone) {
+          const meshNode = new TransformNode(`tranformNode${i}`);
+          meshClone.metadata = { triangle: tr };
+          const triangleCenter = tr.getCenterPoint();
+          const direction = triangleCenter; // Center - origin
+          meshClone.parent = meshNode;
+          meshNode.setDirection(direction, 0, Math.PI / 2, 0);
+          meshClone.position = new Vector3(0, direction.length(), 0);
+
+          // addAxisToScene({ scene, size: 1, parent: meshClone });
+
+          const p1CenterVector = tr.p1().subtract(triangleCenter);
+
+          const angle = Vector3.GetAngleBetweenVectors(
+            meshNode.forward,
+            p1CenterVector,
+            meshNode.up,
           );
-          const meshClone = triangleMesh?.clone(`Triangle${i}`, triangleMesh);
-          if (meshClone) {
-            const meshNode = new TransformNode(`tranformNode${i}`);
-            meshClone.metadata = { triangle: tr };
-            const triangleCenter = tr.getCenterPoint();
-            const direction = triangleCenter; // Center - origin
-            meshClone.parent = meshNode;
-            meshNode.setDirection(direction, 0, Math.PI / 2, 0);
-            meshClone.position = new Vector3(0, direction.length(), 0);
+          // console.log(angle);
 
-            // addAxisToScene({ scene, size: 1, parent: meshClone });
+          meshClone.rotate(meshClone.up, angle);
 
-            const p1CenterVector = tr.p1().subtract(triangleCenter);
+          if (skeletons && triangleMesh.skeleton) {
+            const skeletonMesh = triangleMesh.skeleton.clone(`skeleton${i}`);
+            meshClone.skeleton = skeletonMesh;
+            // skeletonMesh.bones[0].scale(i, i, i);
+            // skeletonMesh.bones[1].scale(1, 1, 1);
+            // skeletonMesh.bones[2].scale(1, 1, 1);
 
-            const angle = Vector3.GetAngleBetweenVectors(
-              meshNode.forward,
-              p1CenterVector,
-              meshNode.up,
+            // https://www.babylonjs-playground.com/#1B1PUZ#15
+            const bone0DirectionFix = new BoneLookController(
+              meshClone,
+              skeletonMesh.bones[0],
+              tr.p3(),
+              {
+                adjustYaw: Math.PI * 0.5,
+                adjustRoll: Math.PI * 0.5,
+              },
             );
-            console.log(angle);
+            const bone1DirectionFix = new BoneLookController(
+              meshClone,
+              skeletonMesh.bones[1],
+              tr.p2(),
+              {
+                adjustYaw: Math.PI * 0.5,
+                adjustRoll: Math.PI * 0.5,
+                adjustPitch: Math.PI,
+              },
+            );
+            const bone2DirectionFix = new BoneLookController(
+              meshClone,
+              skeletonMesh.bones[2],
+              tr.p1(),
+              { adjustYaw: Math.PI * 0.5, adjustRoll: Math.PI * 0.5 },
+            );
+            scene.registerBeforeRender(() => {
+              bone0DirectionFix.update();
+              bone1DirectionFix.update();
+              bone2DirectionFix.update();
+            });
 
-            meshClone.rotate(meshClone.up, angle);
+            // console.log(meshClone.skeleton);
+            // scene.debugLayer.show();
 
-            if (skeletons && triangleMesh.skeleton) {
-              const skeletonMesh = triangleMesh.skeleton.clone(`skeleton${i}`);
-              meshClone.skeleton = skeletonMesh;
-              // skeletonMesh.bones[0].scale(i, i, i);
-              // skeletonMesh.bones[1].scale(1, 1, 1);
-              // skeletonMesh.bones[2].scale(1, 1, 1);
+            // const skeletonViewer = new SkeletonViewer(
+            //   meshClone.skeleton,
+            //   meshClone,
+            //   scene,
+            // );
+            // skeletonViewer.isEnabled = true;
+            // skeletonViewer.color = Color3.Red();
+            // scene.registerBeforeRender(() => {
+            //   skeletonViewer.update();
+            // });
 
-              // https://www.babylonjs-playground.com/#1B1PUZ#15
-              const bone0DirectionFix = new BoneLookController(
-                meshClone,
-                skeletonMesh.bones[0],
-                tr.p3(),
-                {
-                  adjustYaw: Math.PI * 0.5,
-                  adjustRoll: Math.PI * 0.5,
-                },
-              );
-              const bone1DirectionFix = new BoneLookController(
-                meshClone,
-                skeletonMesh.bones[1],
-                tr.p2(),
-                {
-                  adjustYaw: Math.PI * 0.5,
-                  adjustRoll: Math.PI * 0.5,
-                  adjustPitch: Math.PI,
-                },
-              );
-              const bone2DirectionFix = new BoneLookController(
-                meshClone,
-                skeletonMesh.bones[2],
-                tr.p1(),
-                { adjustYaw: Math.PI * 0.5, adjustRoll: Math.PI * 0.5 },
-              );
-              scene.registerBeforeRender(() => {
-                bone0DirectionFix.update();
-                bone1DirectionFix.update();
-                bone2DirectionFix.update();
-              });
-
-              // console.log(meshClone.skeleton);
-
-              // scene.debugLayer.show();
-
-              // const skeletonViewer = new SkeletonViewer(
-              //   meshClone.skeleton,
-              //   meshClone,
-              //   scene,
-              // );
-              // skeletonViewer.isEnabled = true;
-              // skeletonViewer.color = Color3.Red();
-              // scene.registerBeforeRender(() => {
-              //   skeletonViewer.update();
-              // });
-
-              // skeletonMesh.bones.forEach((bone) => {
-              //   new BoneAxesViewer(scene, bone, meshClone);
-              // });
-            }
+            // skeletonMesh.bones.forEach((bone) => {
+            //   new BoneAxesViewer(scene, bone, meshClone);
+            // });
           }
-        });
+        }
+      });
       triangleMesh.visibility = 0;
     }
   });
